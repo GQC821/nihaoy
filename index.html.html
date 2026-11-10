@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>躲陨石 - 来挑战我！</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { width:100%; height:100%; overflow:hidden; background:#0b0b2a; touch-action:none; font-family: sans-serif; }
+canvas { display:block; }
+#share-tip { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.88); z-index:999; color:#fff; text-align:center; padding-top:80px; }
+#share-tip .arrow { font-size:48px; margin-bottom:10px; }
+#share-tip .text { font-size:18px; margin-bottom:8px; }
+#share-tip .sub { font-size:13px; opacity:0.6; margin-bottom:40px; }
+#share-tip .close { font-size:14px; color:#4ad; border:1px solid #4ad; padding:8px 24px; border-radius:20px; display:inline-block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="share-tip">
+  <div class="arrow">👆</div>
+  <div class="text">点击右上角 ···</div>
+  <div class="sub">选择"发送给朋友"或"分享到朋友圈"</div>
+  <div class="close" onclick="document.getElementById('share-tip').style.display='none'">关闭</div>
+</div>
+<script>
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+let W, H;
+function resize(){ W=window.innerWidth; H=window.innerHeight; cv.width=W; cv.height=H; }
+resize(); addEventListener('resize', resize);
+const player={x:0,y:0,r:18};
+let rocks=[], score=0, best=localStorage.getItem('best')||0, run=false, last=0;
+player.x=W/2; player.y=H-120;
+cv.addEventListener('touchmove', e=>{ e.preventDefault(); player.x=Math.max(player.r, Math.min(W-player.r, e.touches[0].clientX)); }, {passive:false});
+const params=new URLSearchParams(location.search);
+const fromScore=params.get('from');
+function start(){ run=true; score=0; rocks=[]; last=performance.now(); requestAnimationFrame(loop); }
+function gameOver(){
+  run=false; best=Math.max(best|0, score|0); localStorage.setItem('best', best|0);
+  document.title='我躲了'+Math.floor(score)+'分！来挑战我';
+  document.getElementById('share-tip').style.display='block';
+}
+function loop(t){
+  if(!run) return;
+  const dt=t-last; last=t; score+=dt*0.02;
+  if(Math.random()<0.04) rocks.push({x:Math.random()*W,y:-20,r:12+Math.random()*18,vy:2+Math.random()*3});
+  ctx.fillStyle='#0b0b2a'; ctx.fillRect(0,0,W,H);
+  if(fromScore && score===0){
+    ctx.fillStyle='#ffcc00'; ctx.textAlign='center'; ctx.font='16px sans-serif';
+    ctx.fillText('朋友拿了 '+fromScore+' 分，来挑战！', W/2, 60);
+  }
+  ctx.fillStyle='#4ad'; ctx.beginPath(); ctx.arc(player.x,player.y,player.r,0,7); ctx.fill();
+  ctx.fillStyle='#e67';
+  for(let i=rocks.length-1;i>=0;i--){
+    let r=rocks[i]; r.y+=r.vy; ctx.beginPath(); ctx.arc(r.x,r.y,r.r,0,7); ctx.fill();
+    if(Math.hypot(r.x-player.x,r.y-player.y)<r.r+player.r){ gameOver(); return; }
+    if(r.y>H+30) rocks.splice(i,1);
+  }
+  ctx.fillStyle='#fff'; ctx.font='18px sans-serif'; ctx.textAlign='left';
+  ctx.fillText('分数 '+Math.floor(score),12,30); ctx.textAlign='right'; ctx.fillText('最高 '+best,W-12,30);
+  requestAnimationFrame(loop);
+}
+cv.addEventListener('touchstart', ()=>{ if(!run) start(); });
+ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.font='22px sans-serif';
+ctx.fillText('点击屏幕开始', W/2, H/2);
+if(fromScore){ ctx.fillStyle='#ffcc00'; ctx.font='16px sans-serif'; ctx.fillText('朋友拿了 '+fromScore+' 分！你能超过吗？', W/2, H/2+40); }
+</script>
+</body>
+</html>
